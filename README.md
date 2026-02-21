@@ -4,11 +4,16 @@ A FastAPI backend that visualizes your relationships as a solar system. You are 
 
 ## Features
 
-- **2D Relationship Mapping** — Place people on a normalized coordinate plane (-1.0 to 1.0). Distance from center represents emotional closeness.
+- **Relationship Mapping** — Place people on a normalized coordinate plane (-1.0 to 1.0). Distance from center represents emotional closeness.
+- **Animation-Ready API** — Each person has `orbit_speed`, `planet_size`, `custom_color`, `notes`, and `relationship_score` fields for frontend animation flexibility.
+- **Theme Configuration** — Store any frontend visual config (background style, particle effects, glow intensity) as a JSONB blob via the theme endpoint.
 - **Relationship Tags** — Categorize people as Partner, Family, Close Friend, Friend, Colleague, Mentor, Acquaintance, or create custom tags.
-- **Snapshot History** — Every change (add, move, remove a person) automatically captures a full-state JSONB snapshot for timeline tracking.
-- **Image Generation** — Generate Strava-style 1080x1080 shareable PNG images with radial gradients, orbital rings, glowing planets, and stats.
-- **Video Generation** — Create timeline videos from snapshots with smooth interpolated transitions, stitched via FFmpeg.
+- **Snapshot History** — Every change automatically captures a full-state JSONB snapshot for timeline tracking.
+- **Real-time Updates** — WebSocket endpoint streams live events (person added/moved/removed, theme changed) for instant UI updates.
+- **Bulk Operations** — Update multiple people's positions in a single API call with one snapshot.
+- **Analytics** — Computed stats: distances, tag distribution, relationship score breakdown, 30-day activity timeline.
+- **Image Generation** — Generate Strava-style 1080x1080 shareable PNG images.
+- **Video Generation** — Create timeline videos from snapshots with smooth interpolated transitions via FFmpeg.
 
 ## Tech Stack
 
@@ -16,6 +21,7 @@ A FastAPI backend that visualizes your relationships as a solar system. You are 
 - **Database:** PostgreSQL 15+ with JSONB
 - **ORM:** SQLAlchemy 2.0 (async, asyncpg driver)
 - **Validation:** Pydantic v2
+- **Real-time:** WebSocket (built-in via uvicorn)
 - **Image Generation:** Pillow (PIL)
 - **Video Generation:** Pillow + FFmpeg
 - **Server:** Uvicorn
@@ -30,8 +36,8 @@ solar-system-api/
 │   ├── database.py          # Async engine, sessionmaker, get_db
 │   ├── models/              # SQLAlchemy models (User, SolarSystem, Person, Tag, Snapshot)
 │   ├── schemas/             # Pydantic request/response schemas
-│   ├── routers/             # API route handlers
-│   ├── services/            # Business logic + image/video generation
+│   ├── routers/             # API route handlers + WebSocket
+│   ├── services/            # Business logic, stats, image/video generation, WebSocket manager
 │   └── utils/               # Tag seeder, interpolation helpers
 ├── assets/fonts/            # Inter font files for image rendering
 ├── migrations/              # Alembic migrations
@@ -45,7 +51,7 @@ solar-system-api/
 
 - Python 3.11+
 - PostgreSQL 15+
-- FFmpeg (for video generation)
+- FFmpeg (optional, for video generation)
 
 ### Installation
 
@@ -97,13 +103,16 @@ Open **http://localhost:8000/docs** for the Swagger UI.
 ### Solar System
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/solar-system/{user_id}` | Get full solar system state |
+| GET | `/api/solar-system/{user_id}` | Get full state (people, tags, theme, stats, last_activity) |
+| PATCH | `/api/solar-system/{user_id}/theme` | Update frontend theme config |
+| GET | `/api/solar-system/{user_id}/stats` | Get computed analytics |
 
 ### People
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/solar-system/{user_id}/people/` | Add a person |
-| PATCH | `/api/solar-system/{user_id}/people/{person_id}` | Update position/tag/name |
+| PATCH | `/api/solar-system/{user_id}/people/bulk` | Bulk update positions |
+| PATCH | `/api/solar-system/{user_id}/people/{person_id}` | Update a person |
 | DELETE | `/api/solar-system/{user_id}/people/{person_id}` | Remove a person (soft delete) |
 
 ### Tags
@@ -126,6 +135,29 @@ Open **http://localhost:8000/docs** for the Swagger UI.
 | POST | `/api/solar-system/{user_id}/generate-image` | Generate shareable PNG |
 | POST | `/api/solar-system/{user_id}/generate-video` | Generate timeline video (MP4) |
 
+### WebSocket
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| WS | `/api/solar-system/{user_id}/ws` | Real-time event stream |
+
+**WebSocket events:** `person_added`, `person_removed`, `person_moved`, `person_tag_changed`, `bulk_update`, `theme_updated`
+
+## Person Fields
+
+Each person (planet) supports these fields for frontend animation:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | required | Person's name |
+| `x_position` | float | required | X coordinate (-1.0 to 1.0) |
+| `y_position` | float | required | Y coordinate (-1.0 to 1.0) |
+| `tag_id` | UUID | null | Relationship tag |
+| `orbit_speed` | float | 1.0 | Animation speed multiplier |
+| `planet_size` | float | 1.0 | Visual size multiplier |
+| `custom_color` | string | null | Hex color override (e.g. `#FF5733`) |
+| `notes` | string | null | Description / hover text |
+| `relationship_score` | int | null | 0-100 closeness metric |
+
 ## Quick Test
 
 ```bash
@@ -134,10 +166,18 @@ curl -X POST http://localhost:8000/api/users/ \
   -H "Content-Type: application/json" \
   -d '{"name": "Ayush", "email": "ayush@example.com"}'
 
-# Add a person (use the user_id from above)
+# Add a person with animation fields (use the user_id from above)
 curl -X POST http://localhost:8000/api/solar-system/{user_id}/people/ \
   -H "Content-Type: application/json" \
-  -d '{"name": "Best Friend", "x_position": 0.2, "y_position": 0.1}'
+  -d '{"name": "Best Friend", "x_position": 0.2, "y_position": 0.1, "orbit_speed": 1.5, "planet_size": 1.2, "custom_color": "#FF5733", "relationship_score": 95}'
+
+# Set a theme
+curl -X PATCH http://localhost:8000/api/solar-system/{user_id}/theme \
+  -H "Content-Type: application/json" \
+  -d '{"theme": {"background": "cosmic", "animation_speed": 1.2, "show_orbits": true}}'
+
+# Get stats
+curl http://localhost:8000/api/solar-system/{user_id}/stats
 
 # Generate an image
 curl -X POST http://localhost:8000/api/solar-system/{user_id}/generate-image
