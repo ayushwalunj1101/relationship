@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+
+# Generated files (images/videos)
+solar-system-api/generated/images/*
+solar-system-api/generated/videos/*
+!solar-system-api/generated/images/.gitkeep
+!solar-system-api/generated/videos/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Alembic versions (keep directory structure)
+solar-system-api/migrations/versions/*.py
+!solar-system-api/migrations/versions/.gitkeep
