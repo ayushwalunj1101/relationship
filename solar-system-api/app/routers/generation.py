@@ -49,6 +49,11 @@ def _build_state_dict(solar_system_data: dict) -> dict:
                 "tag": tag_info,
                 "avatar_url": p.avatar_url,
                 "is_active": True,
+                "orbit_speed": p.orbit_speed,
+                "planet_size": p.planet_size,
+                "custom_color": p.custom_color,
+                "notes": p.notes,
+                "relationship_score": p.relationship_score,
             }
         )
 

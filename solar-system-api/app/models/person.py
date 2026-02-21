@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, String
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -32,6 +32,13 @@ class Person(Base):
         ForeignKey("tags.id", ondelete="SET NULL"),
         nullable=True,
     )
+
+    # Animation/visualization attributes for frontend flexibility
+    orbit_speed = Column(Float, nullable=False, default=1.0)
+    planet_size = Column(Float, nullable=False, default=1.0)
+    custom_color = Column(String(7), nullable=True)  # Hex color override, e.g. "#FF5733"
+    notes = Column(Text, nullable=True)
+    relationship_score = Column(Integer, nullable=True)  # 0-100 closeness score
 
     added_at = Column(DateTime(timezone=True), server_default=func.now())
     removed_at = Column(DateTime(timezone=True), nullable=True)  # Soft delete

@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import Base, engine
 from app.routers import users, solar_system as solar_system_router, people, tags, snapshots, generation
+from app.routers import websocket as ws_router
 from app.utils.seed_tags import seed_predefined_tags
 
 
@@ -46,6 +47,7 @@ app.include_router(people.router)
 app.include_router(tags.router)
 app.include_router(snapshots.router)
 app.include_router(generation.router)
+app.include_router(ws_router.router)
 
 # Serve generated files (images, videos) as static files
 # Must come AFTER all include_router calls

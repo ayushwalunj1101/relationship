@@ -65,6 +65,11 @@ async def capture_snapshot(
                 else None,
                 "avatar_url": p.avatar_url,
                 "is_active": True,
+                "orbit_speed": p.orbit_speed,
+                "planet_size": p.planet_size,
+                "custom_color": p.custom_color,
+                "notes": p.notes,
+                "relationship_score": p.relationship_score,
             }
             for p in active_people
         ],
